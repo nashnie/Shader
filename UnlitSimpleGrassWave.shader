@@ -6,12 +6,15 @@ Shader "UnlitSimpleGrassWave" {
     }
     SubShader {
         Tags {
+            //透明度测试
             "Queue"="AlphaTest"
+            //RenderType
             "RenderType"="TransparentCutout"
         }
         Pass {
             Name "FORWARD"
             Tags {
+                //Rendering Path
                 "LightMode"="ForwardBase"
             }
             Cull Off
