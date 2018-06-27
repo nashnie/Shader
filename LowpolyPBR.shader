@@ -4,11 +4,12 @@
 	Properties
 	{
 		_MainTex ("Texture", 2D) = "white" {}
+		_Color ("Color", Color) = (1, 1, 1, 1)
 		_EmissiveTex ("Emissive Map", 2D) = "white" {}
 		_BumpMap ("Normal Map", 2D) = "white" {}
-		_BumpScale("Normal Scale", float) = 1
-		_Specular("Specular", Color) = (1, 1, 1, 1)
-		_Shininess("Shininess", float) = 1
+		_BumpScale ("Normal Scale", float) = 1
+		_Specular ("Specular", Color) = (1, 1, 1, 1)
+		_Shininess ("Shininess", float) = 1
 	}
 	SubShader
 	{
@@ -24,6 +25,8 @@
 			#pragma multi_compile_fog
 
 			#pragma multi_compile __ MatrixTangentSpace
+			//emissive + ambient + diffuse + specular
+			#pragma multi_compile __ ENABLE_EMISSIVE ENABLE_AMBIENT ENABLE_DIFFUSE ENABLE_SPECULAR
 			
 			#include "UnityCG.cginc"
 			#include "Lighting.cginc"
@@ -34,6 +37,7 @@
 				float2 uv : TEXCOORD0;
 				float3 normal : TEXCOORD1;
 				float4 tangent : TEXCOORD2;
+				float4 color : Color;
 			};
 
 			struct v2f
@@ -50,6 +54,8 @@
 					float4 tangent : TANGENT;
 					float3 worldPos : TEXCOORD1;
 				#endif
+
+				float4 color : Color;
 			};
 
 			float3 CreateBinormal (float3 normal, float3 tangent, float binormalSign) {
@@ -58,6 +64,9 @@
 
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
+
+			float4 _Color;
+
 			sampler2D _EmissiveTex;
 			float4 _EmissiveTex_ST;
 
@@ -73,7 +82,7 @@
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv.xy = TRANSFORM_TEX(v.uv, _MainTex);
-				o.uv.zw = o.uv.xy * _BumpMap_ST.xy + _BumpMap_ST.zw;
+				o.uv.zw = v.uv.xy * _BumpMap_ST.xy + _BumpMap_ST.zw;
 
 				fixed3 normal = UnityObjectToWorldNormal(v.normal);	
 				fixed3 worldPos = mul(unity_ObjectToWorld, v.vertex);
@@ -90,14 +99,15 @@
 					o.tangent = tangent;		
 					o.worldPos = worldPos;
 				#endif
-	
+				
+				o.color = v.color;
+
 				UNITY_TRANSFER_FOG(o, o.vertex);
 				return o;
 			}
 			
 			fixed4 frag (v2f i) : SV_Target
-			{
-					
+			{				
 				float3 tangentSpaceNormal = UnpackNormal(tex2D(_BumpMap, i.uv.zw));//UnpackScaleNormal 
 				tangentSpaceNormal.xy *= _BumpScale;
 				tangentSpaceNormal.z = sqrt(1.0 - saturate(dot(tangentSpaceNormal.xy, tangentSpaceNormal.xy)));
@@ -116,6 +126,7 @@
 
 				// sample the texture
 				fixed4 albedo = tex2D(_MainTex, i.uv.xy);
+				albedo = lerp(albedo, _Color * albedo, i.color.a);
 				//emissive = Ke
 				//fixed3 emissive = tex2D(_EmissiveTex, i.uv);
 				fixed3 emissive = (0, 0, 0, 0);
@@ -125,8 +136,20 @@
 				fixed3 diffuse = albedo.xyz * _LightColor0.rgb * max(0, dot(normal, lightDir));
 				//specular = Ks x lightColor x facing x (max(N · H, 0)) shininess
 				fixed3 specular = _Specular * _LightColor0.rgb * pow(max(dot(normal, halfDir), 0), _Shininess * 128) * albedo.a;
+				//fixed3 specular = halfDir * 0.5 + 0.5;
 				// apply fog
 				UNITY_APPLY_FOG(i.fogCoord, albedo);
+
+				#if ENABLE_EMISSIVE
+					return fixed4(emissive, 1.0); 
+				#elif ENABLE_AMBIENT
+					return fixed4(ambient, 1.0);
+				#elif ENABLE_DIFFUSE
+					return fixed4(diffuse, 1.0);
+				#elif ENABLE_SPECULAR
+					return fixed4(specular, 1.0);
+				#endif
+
 				return fixed4(emissive + ambient + diffuse + specular, 1.0);
 			}
 			ENDCG
