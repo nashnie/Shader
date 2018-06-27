@@ -88,27 +88,30 @@
 					o.normal = normal;
 					float4 tangent = float4(UnityObjectToWorldDir(v.tangent.xyz), v.tangent.w);
 					o.tangent = tangent;		
+					o.worldPos = worldPos;
 				#endif
-				o.worldPos = worldPos;
+	
 				UNITY_TRANSFER_FOG(o, o.vertex);
 				return o;
 			}
 			
 			fixed4 frag (v2f i) : SV_Target
 			{
-				fixed3 lightDir = normalize(UnityWorldSpaceLightDir(i.worldPos));
-				float3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldPos));
-
+					
 				float3 tangentSpaceNormal = UnpackNormal(tex2D(_BumpMap, i.uv.zw));//UnpackScaleNormal 
 				tangentSpaceNormal.xy *= _BumpScale;
 				tangentSpaceNormal.z = sqrt(1.0 - saturate(dot(tangentSpaceNormal.xy, tangentSpaceNormal.xy)));
 				#if MatrixTangentSpace
-					i.normal = normalize(half3(dot(i.TtoW0.xyz, normal), dot(i.TtoW1.xyz, normal), dot(i.TtoW2.xyz, normal)));
+					fixed3 normal = normalize(half3(dot(i.TtoW0.xyz, tangentSpaceNormal), dot(i.TtoW1.xyz, tangentSpaceNormal), dot(i.TtoW2.xyz, tangentSpaceNormal)));
+					fixed3 worldPos = fixed3(i.TtoW0.w, i.TtoW1.w, i.TtoW2.w);
 				#else
 					float3 binormal = CreateBinormal(i.normal, i.tangent.xyz, i.tangent.w);
-					i.normal = normalize(tangentSpaceNormal.x * i.tangent + tangentSpaceNormal.y * binormal + tangentSpaceNormal.z * i.normal);
+					fixed3 normal = normalize(tangentSpaceNormal.x * i.tangent + tangentSpaceNormal.y * binormal + tangentSpaceNormal.z * i.normal);
+					fixed3 worldPos = i.worldPos;
 				#endif
 
+				fixed3 lightDir = normalize(UnityWorldSpaceLightDir(worldPos));
+				float3 viewDir = normalize(UnityWorldSpaceViewDir(worldPos));
 				float3 halfDir = normalize(lightDir + viewDir); 
 
 				// sample the texture
@@ -119,9 +122,9 @@
 				//ambient = Ka x globalAmbient
 				fixed3 ambient = albedo.xyz * UNITY_LIGHTMODEL_AMBIENT.xyz;
 				//diffuse = Kd x lightColor x max(N · L, 0)
-				fixed3 diffuse = albedo.xyz * _LightColor0.rgb * max(0, dot(i.normal, lightDir));
+				fixed3 diffuse = albedo.xyz * _LightColor0.rgb * max(0, dot(normal, lightDir));
 				//specular = Ks x lightColor x facing x (max(N · H, 0)) shininess
-				fixed3 specular = _Specular * _LightColor0.rgb * pow(max(dot(i.normal, halfDir), 0), _Shininess * 128) * albedo.a;
+				fixed3 specular = _Specular * _LightColor0.rgb * pow(max(dot(normal, halfDir), 0), _Shininess * 128) * albedo.a;
 				// apply fog
 				UNITY_APPLY_FOG(i.fogCoord, albedo);
 				return fixed4(emissive + ambient + diffuse + specular, 1.0);
