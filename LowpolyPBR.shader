@@ -10,6 +10,9 @@
 		_BumpScale ("Normal Scale", float) = 1
 		_Specular ("Specular", Color) = (1, 1, 1, 1)
 		_Shininess ("Shininess", float) = 1
+
+		_RimColor ("RimColor", Color) = (1, 1, 1, 1)
+		_RimPower ("RimPower", float) = 1
 	}
 	SubShader
 	{
@@ -77,6 +80,9 @@
 
 			float4 _Specular;
 			float _Shininess;
+
+			fixed4 _RimColor;
+			float _RimPower;
 			
 			v2f vert (appdata v)
 			{
@@ -130,7 +136,8 @@
 				albedo = lerp(albedo, _Color * albedo, i.color.a);
 				//emissive = Ke
 				//fixed3 emissive = tex2D(_EmissiveTex, i.uv);
-				fixed3 emissive = (0, 0, 0, 0);
+				half rim = 1.0 - saturate(dot (normalize(viewDir), normal));
+				fixed3 emissive = _RimColor.rgb * pow (rim, _RimPower);
 				//ambient = Ka x globalAmbient
 				fixed3 ambient = albedo.xyz * UNITY_LIGHTMODEL_AMBIENT.xyz;
 				//diffuse = Kd x lightColor x max(N · L, 0)
