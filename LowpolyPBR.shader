@@ -50,13 +50,13 @@
 				UNITY_FOG_COORDS(1)
 				float4 vertex : SV_POSITION;
 				#if MatrixTangentSpace
-					float4 TtoW0:TEXCOORD1;
-					float4 TtoW1:TEXCOORD2;
-					float4 TtoW2:TEXCOORD3;
+					float4 TtoW0:TEXCOORD2;
+					float4 TtoW1:TEXCOORD3;
+					float4 TtoW2:TEXCOORD4;
 				#else
 					float3 normal : NORMAL;
 					float4 tangent : TANGENT;
-					float3 worldPos : TEXCOORD1;
+					float3 worldPos : TEXCOORD2;
 				#endif
 
 				float4 color : Color;
@@ -146,7 +146,7 @@
 				fixed3 specular = _Specular * _LightColor0.rgb * pow(max(dot(normal, halfDir), 0), _Shininess * 128) * albedo.a;
 				//fixed3 specular = halfDir * 0.5 + 0.5;
 				// apply fog
-				UNITY_APPLY_FOG(i.fogCoord, albedo);
+	
 
 				#if ENABLE_EMISSIVE
 					return fixed4(emissive, 1.0); 
@@ -158,7 +158,9 @@
 					return fixed4(specular, 1.0);
 				#endif
 
-				return fixed4(emissive + ambient + diffuse + specular, 1.0);
+				fixed4 color = fixed4(emissive + ambient + diffuse + specular, 1.0)
+				UNITY_APPLY_FOG(i.fogCoord, color);
+				return color;
 			}
 			ENDCG
 		}
