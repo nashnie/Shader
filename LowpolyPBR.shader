@@ -18,6 +18,7 @@
 
 		Pass
 		{
+		    Tags { "LightMode"="ForwardBase" }
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag
@@ -35,8 +36,8 @@
 			{
 				float4 vertex : POSITION;
 				float2 uv : TEXCOORD0;
-				float3 normal : TEXCOORD1;
-				float4 tangent : TEXCOORD2;
+				float3 normal : NORMAL;
+				float4 tangent : TANGENT;
 				float4 color : Color;
 			};
 
@@ -89,7 +90,7 @@
 
 				#if MatrixTangentSpace
 					fixed3 tangent = UnityObjectToWorldDir(v.tangent.xyz);
-					float3 binormal = CreateBinormal(normal, v.tangent.xyz, v.tangent.w);
+					float3 binormal = CreateBinormal(normal, tangent, v.tangent.w);
 					o.TtoW0 = float4(tangent.x, binormal.x, normal.x, worldPos.x);
 					o.TtoW1 = float4(tangent.y, binormal.y, normal.y, worldPos.y);
 					o.TtoW2 = float4(tangent.z, binormal.z, normal.z, worldPos.z);
